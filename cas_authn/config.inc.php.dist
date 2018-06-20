@@ -31,6 +31,8 @@ $rcmail_config['cas_imap_name'] = 'name_of_imap_service';
 //     This service name must be authorized to be used with the CAS server.
 $rcmail_config['cas_smtp_name'] = 'name_of_imap_service';
 
+$rcmail_config['cas_webmail_server_name'] = 'name_of_imap_service';
+
 // whether the IMAP server caches proxy tickets it has received for subsequent
 //    requests. Will only be used if cas_proxy is set to true. If set to true,
 //    proxy tickets will be reused to connect to the IMAP server until an IMAP
