@@ -123,7 +123,7 @@ class cas_authn extends rcube_plugin {
             $RCMAIL->session->set_auth_cookie();
      
             // log successful login
-            rcmail_log_login();
+            $RCMAIL->log_login();
          
             // allow plugins to control the redirect url after login success
             $redir = $RCMAIL->plugins->exec_hook('login_after', $query + array('_task' => 'mail'));
