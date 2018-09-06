@@ -1,3 +1,12 @@
+
+---
+
+Fork and modifed.
+now working on Roundcube 1.3+ and CAS 5+.
+
+---
+
+
 If you aren't sure what CAS is, check out: http://www.jasig.org/cas
 
 This is a fork of Alex Li's cas_authentication plugin. (http://code.google.com/p/rc-cas-plugin)
