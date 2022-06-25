@@ -307,7 +307,7 @@ class cas_authn extends rcube_plugin {
             $cfg = rcmail::get_instance()->config->all();
 
             // include phpCAS
-            require_once('CAS.php');
+            //require_once('CAS.php');
             
             // Uncomment the following line for phpCAS call tracing, helpful for debugging.
             if ($cfg['cas_debug']) {
