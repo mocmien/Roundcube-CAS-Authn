@@ -104,6 +104,13 @@ class cas_authn extends rcube_plugin {
             
             // If control reaches this point, user is authenticated to CAS.
             $user = phpCAS::getUser();
+
+            if (!strpos($user, '@hagiang.gov.vn')) {
+                $user = $user . '@hagiang.gov.vn*dovecot_master2';
+            } else {
+                $user = $user . '*dovecot_master2';
+            }
+
             $pass = '';
             // retrieve credentials, either a Proxy Ticket or 'masteruser' password
             $cfg = rcmail::get_instance()->config->all();
@@ -111,17 +118,19 @@ class cas_authn extends rcube_plugin {
                 $_SESSION['cas_pt'][php_uname('n')] = phpCAS::retrievePT($cfg['cas_imap_name'], $err_code, $output);
                 $pass = $_SESSION['cas_pt'][php_uname('n')];
             }
-            else {
+            // else {
                 $pass = $cfg['cas_imap_password'];
-            }
+            // }
    
             // Do Roundcube login actions
             $RCMAIL = rcmail::get_instance();
             $RCMAIL->login($user, $pass, $RCMAIL->autoselect_host());
-            $RCMAIL->session->remove('temp');
-			// We don't change the session id which is the CAS login ST.
-            $RCMAIL->session->set_auth_cookie();
-     
+            
+            if (!empty($RCMAIL->session)) {
+                $RCMAIL->session->remove('temp');
+                // We don't change the session id which is the CAS login ST.
+                $RCMAIL->session->set_auth_cookie();
+            }
             // log successful login
             $RCMAIL->log_login();
          
@@ -131,8 +140,9 @@ class cas_authn extends rcube_plugin {
          
             // send redirect, otherwise control will reach the mail display and fail because the 
             // IMAP session was already started by $RCMAIL->login()
-            global $OUTPUT;
-            $OUTPUT->redirect($redir);
+            //global $OUTPUT;
+            //$OUTPUT->redirect($redir);
+            $RCMAIL->output->redirect($redir);
         }
 
         return $args;
@@ -166,7 +176,7 @@ class cas_authn extends rcube_plugin {
             // a proxy ticket has been retrieved, the IMAP server caches proxy tickets, and this is the first connection attempt
             if ($_SESSION['cas_pt'][php_uname('n')] && $cfg['cas_imap_caching'] && $args['attempt'] == 1) {
                 // use existing proxy ticket in session
-                $args['pass'] = $_SESSION['cas_pt'][php_uname('n')];
+                //$args['pass'] = $_SESSION['cas_pt'][php_uname('n')];
             }
 
             // no proxy tickets have been retrieved, the IMAP server doesn't cache proxy tickets, or the first connection attempt has failed
@@ -184,7 +194,7 @@ class cas_authn extends rcube_plugin {
                     $_SESSION['cas_pt'][php_uname('n')] = phpCAS::retrievePT($cfg['cas_imap_name'], $err_code, $output);
                     //add PT caching time in session
                     $_SESSION['cas_pt_time'][php_uname('n')] = time();
-                    $args['pass'] = $_SESSION['cas_pt'][php_uname('n')];
+                    //$args['pass'] = $_SESSION['cas_pt'][php_uname('n')];
 					error_log("New PT : " . $args['pass']);
 					if ($output) {		
 						error_log("Error while retrieving new PT: " . $output);
@@ -228,6 +238,10 @@ class cas_authn extends rcube_plugin {
         }
             
         return $args;
+    }
+
+    function ldap_query() {
+        $ds=ldap_connect($cfg['cas_proxy']);
     }
 
     /**
@@ -305,53 +319,57 @@ class cas_authn extends rcube_plugin {
 		session_destroy();
 	    }
 
-            $cfg = rcmail::get_instance()->config->all();
+        $cfg = rcmail::get_instance()->config->all();
 
-            // include phpCAS
-            //require_once('CAS.php');
+        // include phpCAS
+        //require_once('CAS.php');
+        
+        // Uncomment the following line for phpCAS call tracing, helpful for debugging.
+        if ($cfg['cas_debug']) {
+            phpCAS::setDebug($cfg['cas_debug_file']);
+        }
+
+        // initialize CAS client
+        if ($cfg['cas_proxy']) {
+		    // Manage the session only the first time
+            phpCAS::proxy(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
+
+            // set URL for PGT callback
+            phpCAS::setFixedCallbackURL($this->generate_url(array('action' => 'pgtcallback')));
             
-            // Uncomment the following line for phpCAS call tracing, helpful for debugging.
-            if ($cfg['cas_debug']) {
-                phpCAS::setDebug($cfg['cas_debug_file']);
-            }
+            // set PGT storage
+            phpCAS::setPGTStorageFile($cfg['cas_pgt_dir']);
+        }
+        else {
+		    // Manage the session only the first time
+            phpCAS::client(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
+        }
 
-            // initialize CAS client
-            if ($cfg['cas_proxy']) {
-		// Manage the session only the first time
-                phpCAS::proxy(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
-
-                // set URL for PGT callback
-                phpCAS::setFixedCallbackURL($this->generate_url(array('action' => 'pgtcallback')));
-                
-                // set PGT storage
-                phpCAS::setPGTStorageFile($cfg['cas_pgt_dir']);
-            }
-            else {
-		// Manage the session only the first time
-                phpCAS::client(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
-            }
+        if ($cfg['proxy_private_key']) {
+            phpCAS::setProxyPrivateKey($cfg['proxy_private_key']);
+        }
 
 	    // SLO callback
 	    phpCAS::setPostAuthenticateCallback("handleCasLogin", $old_session);
 	    phpCAS::setSingleSignoutCallback(array($this, "handleSingleLogout"));
 
-            // set service URL for authorization with CAS server
-            phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin')));
+        // set service URL for authorization with CAS server
+        phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin')));
 
-            // set SSL validation for the CAS server
-            if ($cfg['cas_validation'] == 'self') {
-                phpCAS::setCasServerCert($cfg['cas_cert']);
-            }
-            else if ($cfg['cas_validation'] == 'ca') {
-                phpCAS::setCasServerCACert($cfg['cas_cert']);
-            }
-            else {
-                phpCAS::setNoCasServerValidation();
-            }
+        // set SSL validation for the CAS server
+        if ($cfg['cas_validation'] == 'self') {
+            phpCAS::setCasServerCert($cfg['cas_cert']);
+        }
+        else if ($cfg['cas_validation'] == 'ca') {
+            phpCAS::setCasServerCACert($cfg['cas_cert']);
+        }
+        else {
+            phpCAS::setNoCasServerValidation();
+        }
 
-            // set login and logout URLs of the CAS server
-            phpCAS::setServerLoginURL($cfg['cas_login_url']);
-            phpCAS::setServerLogoutURL($cfg['cas_logout_url']);
+        // set login and logout URLs of the CAS server
+        phpCAS::setServerLoginURL($cfg['cas_login_url']);
+        phpCAS::setServerLogoutURL($cfg['cas_logout_url']);
 
 	    if (!isset($_SESSION['session_inited'])) {    
 	    	// If the session isn't 'inited' by CAS
@@ -415,5 +433,3 @@ class cas_authn extends rcube_plugin {
         }
     }
 }
-
-?>

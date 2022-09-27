@@ -67,9 +67,13 @@ $rcmail_config['cas_validation'] = 'ca';
 //     'self' or 'ca'.
 $rcmail_config['cas_cert'] = '/path/to/cert/file';
 
+// The proxy private key to decrypt proxy granting ticket that public key is provided for CAS Server proxy
+$rcmail_config['proxy_private_key'] = '/path/to/proxy/private.key';
+
 // CAS service login URL.
 $rcmail_config['cas_login_url'] = '';
 
 // CAS service logout URL.
 $rcmail_config['cas_logout_url'] = '';
+
 ?>
