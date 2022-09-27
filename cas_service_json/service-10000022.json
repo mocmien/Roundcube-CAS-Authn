@@ -1,0 +1,37 @@
+{
+    "@class": "org.apereo.cas.services.RegexRegisteredService",
+    "serviceId": "^(http|https)://mailbackup.hagiang.gov.vn.*",
+    "id": 10000022,
+    "name": "EmailBackup",
+    "description": "Dịch vụ email 2",
+    "logoutType" : "BACK_CHANNEL",
+    "logoutUrl" : "https://dangnhap.hagiang.gov.vn/cas/logout",
+    "evaluationOrder": 10000,
+    "proxyPolicy": {
+        "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
+        "pattern": "^https?://.*"
+    },
+    "publicKey": {
+        "@class": "org.apereo.cas.services.RegisteredServicePublicKeyImpl",
+        "location": "file:/etc/cas/certs/key_hagiang.gov.vn.public.key",
+        "algorithm": "RSA"
+    },
+    "attributeReleasePolicy": {
+        "@class": "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy",
+        "allowedAttributes": [
+            "java.util.ArrayList",
+            [
+                "cn",
+                "mail",
+                "sn",
+                "accountStatus",
+                "mobile"
+            ]
+        ],
+        "principalAttributesRepository": {
+            "@class": "org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository"
+        },
+        "authorizedToReleaseCredentialPassword": true,
+        "authorizedToReleaseProxyGrantingTicket": true
+    }
+}
